@@ -1,0 +1,24 @@
+{
+  "title": "Malten AI News — October 21, 2026 — Evening Edition",
+  "status": "Awaiting available GitHub Actions credential; not rendered or corrected",
+  "source_video_id": "c078463ace074d019fd767212aa7e1fa",
+  "template_id": "7462de83d6434815ae5a0f295ab7c2a3",
+  "opening": {
+    "speaker": "Marcus Reed",
+    "text": "Good evening, and welcome to Malten AI News Network. I'm Marcus Reed. It is Wednesday, October twenty-first, twenty twenty-six. Tonight: world headlines, Baltimore, Maryland, Annapolis, and weather. We also have exciting news about our new Friday evening podcast. Claire?"
+  },
+  "requirements": [
+    "Assign Marcus Reed even-numbered segments and Claire Bennett odd-numbered segments.",
+    "Only one voice and one moving mouth at a time. The listener keeps their mouth closed.",
+    "Keep both established anchors in the full 1920 by 1080 studio frame, preserving desk, logos, and background.",
+    "Keep original natural speaking pace; do not accelerate narration.",
+    "Apply and verify the listener-mouth correction before delivering any render as corrected.",
+    "Use evening wording and check time-sensitive weather and meeting descriptions before rendering.",
+    "Preserve Roger Bond's Malten AI Podcast announcement: Friday October 23, 2026 at 6 p.m. Eastern."
+  ],
+  "credential": {
+    "github_actions_secret_name": "HEYGEN_API_KEY",
+    "http_header": "X-Api-Key",
+    "test_result": "Secret unavailable to workflow run 39684147553"
+  }
+}

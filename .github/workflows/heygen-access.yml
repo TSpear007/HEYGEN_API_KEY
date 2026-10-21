@@ -1,0 +1,87 @@
+name: Retrieve HeyGen news draft
+on:
+  workflow_dispatch:
+    inputs:
+      video_id:
+        description: Existing HeyGen video ID (no new render)
+        required: true
+        default: c078463ace074d019fd767212aa7e1fa
+  push:
+    paths:
+      - .github/workflows/heygen-access.yml
+
+permissions:
+  contents: read
+
+jobs:
+  retrieve:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Authenticate and download existing video
+        env:
+          HEYGEN_API_KEY: ${{ secrets.HEYGEN_API_KEY }}
+          VIDEO_ID: ${{ inputs.video_id || 'c078463ace074d019fd767212aa7e1fa' }}
+        shell: python
+        run: |
+          import json, os, pathlib, re, sys, urllib.request
+          from urllib.error import HTTPError, URLError
+          from urllib.parse import urlencode, urlparse
+
+          key = os.environ.get("HEYGEN_API_KEY", "").strip()
+          if not key:
+              sys.exit("Missing repository Actions secret: HEYGEN_API_KEY. No video was generated.")
+          video_id = os.environ["VIDEO_ID"].strip()
+          if not re.fullmatch(r"[A-Za-z0-9_-]{1,100}", video_id):
+              sys.exit("Invalid video ID.")
+          url = "https://api.heygen.com/v1/video_status.get?" + urlencode({"video_id": video_id})
+          request = urllib.request.Request(url, headers={"X-Api-Key": key, "Accept": "application/json"})
+          try:
+              with urllib.request.urlopen(request, timeout=60) as response:
+                  result = json.load(response)
+          except HTTPError as error:
+              sys.exit(f"HeyGen API returned HTTP {error.code}; check secret validity and video ownership. No new render was requested.")
+          except URLError:
+              sys.exit("Could not reach HeyGen API. No new render was requested.")
+          data = result.get("data") or {}
+          status = data.get("status", "unknown")
+          if status != "completed":
+              sys.exit(f"Video status: {status}. No new render was requested.")
+          download_url = data.get("video_url")
+          if not download_url or urlparse(download_url).scheme != "https":
+              sys.exit("HeyGen did not return an HTTPS video download URL.")
+          output = pathlib.Path("output")
+          output.mkdir(exist_ok=True)
+          target = output / f"Malten_AI_News_{video_id}_ORIGINAL_DRAFT.mp4"
+          try:
+              # Send the API key only to api.heygen.com, never to the media host.
+              with urllib.request.urlopen(download_url, timeout=120) as source, target.open("wb") as destination:
+                  while chunk := source.read(1024 * 1024):
+                      destination.write(chunk)
+          except HTTPError as error:
+              target.unlink(missing_ok=True)
+              sys.exit(f"Media download returned HTTP {error.code}. Authentication succeeded, but file retrieval failed.")
+          except (URLError, TimeoutError):
+              target.unlink(missing_ok=True)
+              sys.exit("Media transfer failed. No new render was requested.")
+          if target.stat().st_size < 1024:
+              target.unlink(missing_ok=True)
+              sys.exit("Downloaded file is unexpectedly small.")
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as summary:
+              summary.write("## HeyGen access verified\n\nAuthenticated using the repository secret and downloaded the existing draft.\n\n")
+              summary.write("Download the artifact below. This is the original draft; listener-mouth correction has not been applied. No new render was requested.\n")
+          print("HeyGen authentication and existing-video download succeeded.")
+
+      - name: Verify video and audio streams
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ffmpeg
+          ffprobe -v error -show_entries stream=codec_type,width,height -show_entries format=duration -of json output/*.mp4
+
+      - name: Save original draft for correction
+        uses: actions/upload-artifact@v4
+        with:
+          name: Malten-HeyGen-original-draft
+          path: output/*.mp4
+          if-no-files-found: error
+          retention-days: 7
